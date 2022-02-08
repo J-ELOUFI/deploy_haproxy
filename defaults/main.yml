@@ -1,0 +1,37 @@
+---
+haproxy_connect_any: true
+haproxy_socket: /var/run/haproxy.stat
+haproxy_chroot: /var/lib/haproxy
+haproxy_user: haproxy_chroot
+haproxy_group: haproxy_chroot
+# Extra global vars (see README for example usage).
+haproxy_global_vars: []
+
+# Frontend settings.
+haproxy_frontend_name: 'hafrontend'
+haproxy_frontend_bind: '*:80'
+aproxy_frontend_mode: 'http'
+
+#haproxy_entries
+
+# Backend settings.
+haproxy_backend_name: 'habackend'
+haproxy_backend_mode: 'http'
+haproxy_backend_balance_method: 'roundrobin'
+haproxy_backend_httpchk: 'HEAD / HTTP/1.1\r\nHost:localhost'
+
+haproxy:
+  backend_host:
+    - id: 1
+      host: mariadb1.localdomain
+      port: 3306
+    - id: 2
+      host: mariadb2.localdomain
+      port: 3306
+    - id: 3
+      host: mariadb3.localdomain
+      port: 3306
+  stats:
+    port: 9000
+    user: admin
+    pass: password
