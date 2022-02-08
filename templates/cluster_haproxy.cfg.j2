@@ -1,0 +1,80 @@
+# {{ ansible_managed }}
+
+##### global section #####
+global
+  maxconn         10000
+  log /dev/log    local0
+  log /dev/log    local1 notice
+{% if haproxy_socket != '' %}
+  stats socket {{ haproxy_socket }} mode 600 level admin
+{% endif %}
+{% if haproxy_chroot != '' %}
+  chroot {{ haproxy_chroot }}
+{% endif %}
+  pidfile         /var/run/haproxy.pid
+  user {{ haproxy_user }}
+  group {{ haproxy_group }}
+  daemon
+  nbproc 2
+  nbthread 4
+  cpu-map auto:1/1-4 0-3
+  tune.ssl.default-dh-param 1024
+{% for global_var in haproxy_global_vars %}
+  {{ global_var }}
+{% endfor %}
+
+##### defaults section #####
+defaults
+    log global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 10s
+    timeout client  50s
+    timeout server  50s
+	maxconn 5000
+	
+##### fronted section #####
+frontend {{ haproxy_frontend_name }}
+{% for b in [ haproxy_frontend_bind ]| flatten %}
+    bind {{ b }}
+{% endfor %}
+    mode {{ haproxy_frontend_mode }}
+{% for e in haproxy_entries | default([]) %}
+    acl {{ e.name }} {{ e.acl }}
+    use_backend {{ e.name }} if {{ e.name }}
+{% endfor %}
+    default_backend {{ haproxy_backend_name }}
+    monitor-uri     /monitoruri
+    stats enable
+    stats uri /haproxy?stats
+
+#frontend https
+#    bind :443
+#    mode tcp
+#    option tcplog
+#	 tcp-request inspect-delay  5s
+
+##### backend section #####
+backend {{ haproxy_backend_name }}
+   mode {{ haproxy_backend_mode }}
+   balance {{ haproxy_backend_balance_method }} 
+   cookie SERVERUSED insert indirect nocache maxidle 10
+{% if haproxy_backend_httpchk != '' %}
+   option httpchk {{ haproxy_backend_httpchk }}
+{% endif %}
+   default-server check maxconn 20
+{% for backend_host in haproxy['backend_host'] %}
+   server {{ haproxy_backend_name }}{{ backend_host['id'] }} {{ backend_host['host'] }}:{{ backend_host['port'] }} cookie {{ haproxy_backend_name }}{{ backend_host['id'] }} check
+{% endfor %}
+
+##### Listen section #####
+listen stats :{{ haproxy['stats']['port'] }}
+   mode http
+   stats enable
+   stats realm Haproxy\ Statistics
+   stats uri /
+   stats auth {{ haproxy['stats']['user'] }}:{{ haproxy['stats']['pass'] }}
+    
+    
+  

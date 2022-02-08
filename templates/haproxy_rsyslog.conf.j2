@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+
+$ModLoad imudp
+$UDPServerRun 514
+$ActionFileDefaultTemplate RSYSLOG_SyslogProtocol23Format
+#Log dans /var/log/haproxy.log
+local2.* /var/log/haproxy.log
+# Ne pas logger ailleurs
+& ~
+
+

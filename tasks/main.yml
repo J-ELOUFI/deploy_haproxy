@@ -1,0 +1,39 @@
+---
+- name: Install haproxy
+  package:
+    name: haproxy
+    state: present
+  become: yes
+
+- name: SELINUX set haproxy_connect_any=1 (bind on all ports)
+  seboolean:
+    name: haproxy_connect_any
+    state: "{{ haproxy_connect_any }}" #true or false (default: true)
+    persistent: yes
+  #when: ansible_os_family == 'RedHat'
+  become: yes
+
+- name: Haproxy rsyslog conf
+  template:
+    dest: /etc/rsyslog.d/haproxy.conf
+    src: haproxy_rsyslog.conf.j2
+  notify: restart rsyslog
+
+# Force restart rsyslog before haproxy
+- meta: flush_handlers
+
+- name: Configure the haproxy load balancer
+  template:
+    src: cluster_haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: 0644
+    validate: haproxy -f %s -c -q
+  become: yes
+  notify: reload haproxy
+
+- name: Start the haproxy service
+  service:
+    name: haproxy
+    state: started
+    enabled: yes
+  become: yes
